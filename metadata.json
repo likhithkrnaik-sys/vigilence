@@ -1,0 +1,8 @@
+{
+  "name": "VigiLens",
+  "description": "AI-powered driver drowsiness detection system that monitors eye closure, blinking, and head pose to prevent accidents.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

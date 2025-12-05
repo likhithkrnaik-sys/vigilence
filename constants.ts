@@ -23,4 +23,4 @@ export const SCORE_CRITICAL = 60;
 export const SCORE_WARNING = 30;
 
 // Alarm Sound
-export const ALARM_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'; // Public domain loud alarm
+export const ALARM_SOUND_URL = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'; // Loud Alarm Clock

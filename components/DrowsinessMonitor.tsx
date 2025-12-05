@@ -30,6 +30,7 @@ const DrowsinessMonitor: React.FC<Props> = ({ onStatsUpdate, onTripEnd, onStateC
   const requestRef = useRef<number>();
   const lastVideoTimeRef = useRef<number>(-1);
   const eyesClosedStartTimeRef = useRef<number | null>(null);
+  const eyesOpenStartTimeRef = useRef<number | null>(null); // New: Track sustained open eyes
   const alarmStartTimeRef = useRef<number | null>(null);
   const lastFaceDetectedTimeRef = useRef<number>(Date.now());
   const statsRef = useRef<DrowsinessStats>({
@@ -81,6 +82,7 @@ const DrowsinessMonitor: React.FC<Props> = ({ onStatsUpdate, onTripEnd, onStateC
       setMonitorState(MonitoringState.ALARM);
       onStateChange(MonitoringState.ALARM);
       alarmStartTimeRef.current = Date.now();
+      eyesOpenStartTimeRef.current = null; // Reset open timer
       
       // Force play and log
       console.log("TRIGGERING ALARM SOUND");
@@ -99,6 +101,7 @@ const DrowsinessMonitor: React.FC<Props> = ({ onStatsUpdate, onTripEnd, onStateC
     alarmSound?.stop();
     alarmStartTimeRef.current = null;
     eyesClosedStartTimeRef.current = null;
+    eyesOpenStartTimeRef.current = null;
     setEyesClosedDuration(0);
   }, [onStateChange, alarmSound]);
 
@@ -174,6 +177,9 @@ const DrowsinessMonitor: React.FC<Props> = ({ onStatsUpdate, onTripEnd, onStateC
           
           // Eye Closure
           if (avgEAR < EAR_THRESHOLD_CLOSED) {
+            // EYES ARE CLOSED
+            eyesOpenStartTimeRef.current = null; // Reset open timer
+
             if (eyesClosedStartTimeRef.current === null) {
               eyesClosedStartTimeRef.current = now;
             } else {
@@ -191,21 +197,25 @@ const DrowsinessMonitor: React.FC<Props> = ({ onStatsUpdate, onTripEnd, onStateC
               }
             }
           } else {
-            // Eyes opened
-            if (eyesClosedStartTimeRef.current !== null) {
-              // Was closed, now open
-               // Check if user opened eyes during alarm
-              if (monitorState === MonitoringState.ALARM || monitorState === MonitoringState.EMERGENCY) {
-                 // Requirement: Eyes open continuously for >= 1 second to stop.
-                 // For safety, let's just reset the closure timer. The user must tap "I'm Awake" or keep eyes open long enough.
-                 // We'll trust the button primarily for UX, but if eyes are VERY open (alert), we can auto-stop.
-                 if (avgEAR > 0.3) { // Wide open
-                    stopAlarm(); 
-                 }
-              }
-            }
+            // EYES ARE OPEN
             eyesClosedStartTimeRef.current = null;
             setEyesClosedDuration(0);
+
+            // Handle Alarm Auto-Stop (Wake Up Logic)
+            if (monitorState === MonitoringState.ALARM || monitorState === MonitoringState.EMERGENCY) {
+                if (eyesOpenStartTimeRef.current === null) {
+                  eyesOpenStartTimeRef.current = now;
+                }
+                
+                // If eyes have been open for > 500ms, assume user is awake and stop alarm
+                const openDuration = now - eyesOpenStartTimeRef.current;
+                if (openDuration > 500) { 
+                   stopAlarm();
+                   console.log("Alarm stopped: Eyes detected open for 500ms");
+                }
+            } else {
+              eyesOpenStartTimeRef.current = null;
+            }
           }
 
           // Yawn Detection
